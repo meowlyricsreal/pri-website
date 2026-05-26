@@ -109,19 +109,19 @@ const INIT_ADS = [
 const INIT_GROUPS = [
   {
     id: 1,
-    name: "Grup WhatsApp PRI V1",
+    name: "Central Persatuan Railfans Indonesia V1",
     link: WA_GROUP_V1,
-    description: "Grup resmi pertama Persatuan Railfans Indonesia",
+    description: "Grup resmi utama Persatuan Railfans Indonesia",
     type: "WhatsApp",
-    membersCount: "250+",
+    membersCount: "220+",
   },
   {
     id: 2,
-    name: "Grup WhatsApp PRI V2",
+    name: "Central Persatuan Railfans Indonesia V2",
     link: WA_GROUP_V2,
     description: "Grup resmi kedua Persatuan Railfans Indonesia",
     type: "WhatsApp",
-    membersCount: "180+",
+    membersCount: "50+",
   },
 ];
 
