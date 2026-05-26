@@ -400,8 +400,8 @@ const css = `
   .ann-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: white; }
   .ann-content { color: var(--text2); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
   .ann-media { margin-top: 10px; border-radius: 7px; overflow: hidden; }
-  .ann-media img { width: 100%; max-height: 180px; object-fit: cover; }
-  .ann-media video { width: 100%; max-height: 180px; }
+  .ann-media img { width: 100%; height: auto; display: block; object-fit: cover; border-radius: 7px; }
+  .ann-media video { width: 100%; height: auto; display: block; border-radius: 7px; }
   .ann-author { margin-top: 8px; font-size: 11px; color: var(--text2); }
   .ann-author strong { color: var(--gold); }
 
