@@ -7,11 +7,13 @@ export default defineConfig({
 
   server: {
     host: '0.0.0.0',
-    port: process.env.PORT || 3000
+    port: process.env.PORT || 3000,
+    allowedHosts: ['ofiicial-web-pri.onrender.com']
   },
 
   preview: {
     host: '0.0.0.0',
-    port: process.env.PORT || 3000
+    port: process.env.PORT || 3000,
+    allowedHosts: ['ofiicial-web-pri.onrender.com']
   }
 })
