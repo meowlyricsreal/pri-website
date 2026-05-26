@@ -398,7 +398,7 @@ const css = `
   .ann-tag.pinned-tag { background: rgba(220,38,38,0.15); color: #f87171; }
   .ann-date { font-size: 11px; color: var(--text2); }
   .ann-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: white; }
-  .ann-content { color: var(--text2); font-size: 13px; line-height: 1.6; }
+  .ann-content { color: var(--text2); font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
   .ann-media { margin-top: 10px; border-radius: 7px; overflow: hidden; }
   .ann-media img { width: 100%; max-height: 180px; object-fit: cover; }
   .ann-media video { width: 100%; max-height: 180px; }
