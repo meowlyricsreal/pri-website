@@ -672,6 +672,8 @@ export default function App() {
   const [infoList, setInfoList] = useLocalStorage("pri_info", INIT_INFO);
   const [ads, setAds] = useLocalStorage("pri_ads", INIT_ADS);
   const [groups, setGroups] = useLocalStorage("pri_groups", INIT_GROUPS);
+  const [likes, setLikes] = useLocalStorage("pri_likes", {});
+  const [comments, setComments] = useLocalStorage("pri_comments", {});
 
   // Auth — simpan sesi login
   const [currentUser, setCurrentUser] = useLocalStorage("pri_session", null);
@@ -785,10 +787,10 @@ export default function App() {
       ))}
 
       {/* Pages */}
-      {page === "home" && <HomePage announcements={announcements} schedules={schedules} infoList={infoList} ads={ads} navigate={navigate} users={users} groups={groups} />}
-      {page === "announcements" && <AnnouncementsPage announcements={announcements} ads={ads} />}
+      {page === "home" && <HomePage announcements={announcements} schedules={schedules} infoList={infoList} ads={ads} navigate={navigate} users={users} groups={groups} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />}
+      {page === "announcements" && <AnnouncementsPage announcements={announcements} ads={ads} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />}
       {page === "schedule" && <SchedulePage schedules={schedules} ads={ads} />}
-      {page === "info" && <InfoPage infoList={infoList} ads={ads} />}
+      {page === "info" && <InfoPage infoList={infoList} ads={ads} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />}
       {page === "groups" && <GroupsPage groups={groups} />}
       {page === "login" && <LoginPage users={users} setCurrentUser={setCurrentUser} navigate={navigate} showToast={showToast} />}
       {page === "register" && <RegisterPage users={users} setUsers={setUsers} navigate={navigate} showToast={showToast} />}
@@ -845,7 +847,7 @@ export default function App() {
 }
 
 // ─── HOME PAGE ───────────────────────────────────────────────
-function HomePage({ announcements, schedules, infoList, ads, navigate, users, groups }) {
+function HomePage({ announcements, schedules, infoList, ads, navigate, users, groups, likes, setLikes, comments, setComments, currentUser }) {
   const pinned = announcements.filter(a => a.pinned);
   const latest = announcements.slice(0, 3);
   const todaySchedules = schedules.slice(0, 4);
@@ -886,7 +888,7 @@ function HomePage({ announcements, schedules, infoList, ads, navigate, users, gr
                 </div>
                 <div className="section-divider" />
                 <div className="card-grid card-grid-2">
-                  {pinned.map(a => <AnnouncementCard key={a.id} ann={a} />)}
+                  {pinned.map(a => <AnnouncementCard key={a.id} ann={a} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />)}
                 </div>
               </div>
             )}
@@ -899,7 +901,7 @@ function HomePage({ announcements, schedules, infoList, ads, navigate, users, gr
               </div>
               <div className="section-divider" />
               <div className="card-grid card-grid-2">
-                {latest.map(a => <AnnouncementCard key={a.id} ann={a} />)}
+                {latest.map(a => <AnnouncementCard key={a.id} ann={a} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />)}
               </div>
             </div>
 
@@ -923,7 +925,7 @@ function HomePage({ announcements, schedules, infoList, ads, navigate, users, gr
               </div>
               <div className="section-divider" />
               <div className="card-grid card-grid-2">
-                {infoList.slice(0, 4).map(i => <InfoCard key={i.id} item={i} />)}
+                {infoList.slice(0, 4).map(i => <InfoCard key={i.id} item={i} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />)}
               </div>
             </div>
           </div>
@@ -973,24 +975,84 @@ function HomePage({ announcements, schedules, infoList, ads, navigate, users, gr
 }
 
 // ─── ANNOUNCEMENT CARD ───────────────────────────────────────
-function AnnouncementCard({ ann }) {
+function AnnouncementCard({ ann, likes, setLikes, comments, setComments, currentUser }) {
+  const [open, setOpen] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const key = `ann_${ann.id}`;
+  const annLikes = likes[key] || [];
+  const annComments = comments[key] || [];
+  const uid = currentUser?.id || null;
+  const liked = uid && annLikes.includes(uid);
+
+  const toggleLike = () => {
+    if (!uid) return;
+    setLikes(p => ({ ...p, [key]: liked ? annLikes.filter(x => x !== uid) : [...annLikes, uid] }));
+  };
+
+  const submitComment = () => {
+    if (!commentText.trim() || !currentUser) return;
+    setComments(p => ({ ...p, [key]: [...annComments, { id: Date.now(), text: commentText.trim(), author: currentUser.username, date: new Date().toLocaleDateString("id-ID") }] }));
+    setCommentText("");
+  };
+
   return (
     <div className={`card ann-card ${ann.pinned ? "pinned" : ""}`}>
-      <div className="ann-meta">
-        {ann.pinned && <span className="ann-tag pinned-tag">📌 Penting</span>}
-        <span className="ann-tag">Pengumuman</span>
-        <span className="ann-date">{ann.date}</span>
+      {/* Header — selalu nampak, klik untuk buka tutup */}
+      <div style={{ cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
+        <div className="ann-meta">
+          {ann.pinned && <span className="ann-tag pinned-tag">📌 Penting</span>}
+          <span className="ann-tag">Pengumuman</span>
+          <span className="ann-date">{ann.date}</span>
+          <span style={{ marginLeft: "auto", color: "var(--gold)", fontSize: 12 }}>{open ? "▲ Tutup" : "▼ Buka"}</span>
+        </div>
+        <div className="ann-title">{ann.title}</div>
+        {!open && <div className="ann-content" style={{ overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", opacity: 0.7 }}>{ann.content}</div>}
       </div>
-      <div className="ann-title">{ann.title}</div>
-      <div className="ann-content">{ann.content}</div>
-      {ann.mediaUrl && (
-        <div className="ann-media">
-          {ann.mediaType === "image" && <img src={ann.mediaUrl} alt="media" />}
-          {ann.mediaType === "video" && <video src={ann.mediaUrl} controls />}
-          {ann.mediaType === "link" && <a href={ann.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", fontSize: 13 }}>🔗 {ann.mediaUrl}</a>}
+
+      {/* Content expandable */}
+      {open && (
+        <>
+          <div className="ann-content" style={{ marginTop: 6 }}>{ann.content}</div>
+          {ann.mediaUrl && (
+            <div className="ann-media">
+              {ann.mediaType === "image" && <img src={ann.mediaUrl} alt="media" />}
+              {ann.mediaType === "video" && <video src={ann.mediaUrl} controls />}
+              {ann.mediaType === "link" && <a href={ann.mediaUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", fontSize: 13 }}>🔗 {ann.mediaUrl}</a>}
+            </div>
+          )}
+          <div className="ann-author" style={{ marginTop: 8 }}>Oleh: <strong>{ann.author}</strong></div>
+        </>
+      )}
+
+      {/* Like & Komen bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+        <button onClick={toggleLike} title={!uid ? "Login untuk like" : ""} style={{ background: "none", border: "none", cursor: uid ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 4, color: liked ? "#f87171" : "var(--text2)", fontSize: 13, fontWeight: 600, opacity: uid ? 1 : 0.5 }}>
+          {liked ? "❤️" : "🤍"} {annLikes.length}
+        </button>
+        <button onClick={() => setShowComments(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--text2)", fontSize: 13, fontWeight: 600 }}>
+          💬 {annComments.length}
+        </button>
+      </div>
+
+      {/* Komen section */}
+      {showComments && (
+        <div style={{ marginTop: 8 }}>
+          {annComments.length === 0 && <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>Belum ada komentar.</div>}
+          <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+            {annComments.map(c => (
+              <div key={c.id} style={{ background: "var(--navy3)", borderRadius: 7, padding: "7px 10px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)" }}>{c.author} <span style={{ color: "var(--text2)", fontWeight: 400 }}>· {c.date}</span></div>
+                <div style={{ fontSize: 13, color: "var(--text)", marginTop: 2, whiteSpace: "pre-wrap" }}>{c.text}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input className="form-input" style={{ flex: 1, padding: "7px 10px", fontSize: 13 }} placeholder={currentUser ? "Tulis komentar..." : "Login untuk komentar"} value={commentText} onChange={e => setCommentText(e.target.value)} disabled={!currentUser} onKeyDown={e => e.key === "Enter" && submitComment()} />
+            <button onClick={submitComment} disabled={!currentUser} style={{ padding: "7px 12px", background: currentUser ? "var(--gold)" : "var(--navy3)", color: currentUser ? "var(--navy)" : "var(--text2)", border: "none", borderRadius: 7, fontWeight: 700, cursor: currentUser ? "pointer" : "not-allowed", fontSize: 13 }}>Kirim</button>
+          </div>
         </div>
       )}
-      <div className="ann-author">Oleh: <strong>{ann.author}</strong></div>
     </div>
   );
 }
@@ -1026,51 +1088,102 @@ function ScheduleTable({ schedules }) {
 }
 
 // ─── INFO CARD ───────────────────────────────────────────────
-function InfoCard({ item }) {
+function InfoCard({ item, likes, setLikes, comments, setComments, currentUser }) {
+  const [open, setOpen] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentText, setCommentText] = useState("");
   const emoji = item.severity === "warning" ? "⚠️" : item.severity === "danger" ? "🚨" : "ℹ️";
+  const key = `info_${item.id}`;
+  const itemLikes = likes[key] || [];
+  const itemComments = comments[key] || [];
+  const uid = currentUser?.id || null;
+  const liked = uid && itemLikes.includes(uid);
+
+  const toggleLike = () => {
+    if (!uid) return;
+    setLikes(p => ({ ...p, [key]: liked ? itemLikes.filter(x => x !== uid) : [...itemLikes, uid] }));
+  };
+
+  const submitComment = () => {
+    if (!commentText.trim() || !currentUser) return;
+    setComments(p => ({ ...p, [key]: [...itemComments, { id: Date.now(), text: commentText.trim(), author: currentUser.username, date: new Date().toLocaleDateString("id-ID") }] }));
+    setCommentText("");
+  };
+
   return (
     <div className="card">
-      <div className="info-card">
-        <div className={`info-icon ${item.severity}`}><span style={{ fontSize: 20 }}>{emoji}</span></div>
-        <div style={{ flex: 1 }}>
-          <div className={`info-type ${item.severity}`}>{item.type}</div>
-          <div style={{ fontWeight: 700, color: "white", fontSize: 14, marginBottom: 6 }}>{item.title}</div>
-          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>{item.content}</div>
-          <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 8 }}>{item.date} • {item.author}</div>
+      <div style={{ cursor: "pointer" }} onClick={() => setOpen(o => !o)}>
+        <div className="info-card">
+          <div className={`info-icon ${item.severity}`}><span style={{ fontSize: 18 }}>{emoji}</span></div>
+          <div style={{ flex: 1 }}>
+            <div className={`info-type ${item.severity}`}>{item.type}</div>
+            <div style={{ fontWeight: 700, color: "white", fontSize: 14, marginBottom: 4 }}>{item.title}</div>
+            {!open && <div style={{ fontSize: 12, color: "var(--text2)", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{item.content}</div>}
+          </div>
+          <span style={{ color: "var(--gold)", fontSize: 12, flexShrink: 0 }}>{open ? "▲" : "▼"}</span>
         </div>
       </div>
+
+      {open && (
+        <>
+          <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6, marginTop: 8, whiteSpace: "pre-wrap" }}>{item.content}</div>
+          <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 8 }}>{item.date} • {item.author}</div>
+        </>
+      )}
+
+      {/* Like & Komen bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--border)" }}>
+        <button onClick={toggleLike} title={!uid ? "Login untuk like" : ""} style={{ background: "none", border: "none", cursor: uid ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 4, color: liked ? "#f87171" : "var(--text2)", fontSize: 13, fontWeight: 600, opacity: uid ? 1 : 0.5 }}>
+          {liked ? "❤️" : "🤍"} {itemLikes.length}
+        </button>
+        <button onClick={() => setShowComments(s => !s)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, color: "var(--text2)", fontSize: 13, fontWeight: 600 }}>
+          💬 {itemComments.length}
+        </button>
+      </div>
+
+      {showComments && (
+        <div style={{ marginTop: 8 }}>
+          {itemComments.length === 0 && <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 8 }}>Belum ada komentar.</div>}
+          <div style={{ maxHeight: 180, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+            {itemComments.map(c => (
+              <div key={c.id} style={{ background: "var(--navy3)", borderRadius: 7, padding: "7px 10px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)" }}>{c.author} <span style={{ color: "var(--text2)", fontWeight: 400 }}>· {c.date}</span></div>
+                <div style={{ fontSize: 13, color: "var(--text)", marginTop: 2, whiteSpace: "pre-wrap" }}>{c.text}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input className="form-input" style={{ flex: 1, padding: "7px 10px", fontSize: 13 }} placeholder={currentUser ? "Tulis komentar..." : "Login untuk komentar"} value={commentText} onChange={e => setCommentText(e.target.value)} disabled={!currentUser} onKeyDown={e => e.key === "Enter" && submitComment()} />
+            <button onClick={submitComment} disabled={!currentUser} style={{ padding: "7px 12px", background: currentUser ? "var(--gold)" : "var(--navy3)", color: currentUser ? "var(--navy)" : "var(--text2)", border: "none", borderRadius: 7, fontWeight: 700, cursor: currentUser ? "pointer" : "not-allowed", fontSize: 13 }}>Kirim</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── FULL ANNOUNCEMENTS PAGE ─────────────────────────────────
-function AnnouncementsPage({ announcements, ads }) {
-  const sideAds = ads.filter(a => a.position === "side");
+function AnnouncementsPage({ announcements, ads, likes, setLikes, comments, setComments, currentUser }) {
+  const [search, setSearch] = useState("");
+  const filtered = announcements.filter(a =>
+    a.title.toLowerCase().includes(search.toLowerCase()) ||
+    a.content.toLowerCase().includes(search.toLowerCase())
+  );
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: sideAds.length ? "1fr 280px" : "1fr", gap: 24, alignItems: "start" }}>
-        <div className="section" style={{ paddingLeft: 0, paddingRight: 0 }}>
-          <div className="section-header">
-            <h2 className="section-title"><Icon name="megaphone" size={22} color="#e8c848" />Semua Pengumuman<span className="badge">{announcements.length}</span></h2>
-          </div>
-          <div className="section-divider" />
-          <div className="card-grid card-grid-2">
-            {announcements.map(a => <AnnouncementCard key={a.id} ann={a} />)}
-          </div>
-          {!announcements.length && <div style={{ textAlign: "center", color: "var(--text2)", padding: 40 }}>Belum ada pengumuman.</div>}
-        </div>
-        {sideAds.length > 0 && (
-          <div style={{ paddingTop: 48 }}>
-            {sideAds.map(ad => (
-              <a key={ad.id} className="ad-banner" href={ad.link} target="_blank" rel="noopener noreferrer" style={{ display: "block", marginBottom: 16 }}>
-                <img src={ad.imageUrl} alt={ad.caption} style={{ width: "100%" }} />
-                <div className="ad-label">Iklan</div>
-                {ad.caption && <div className="ad-caption">{ad.caption}</div>}
-              </a>
-            ))}
-          </div>
-        )}
+    <div className="section">
+      <div className="section-header">
+        <h2 className="section-title"><Icon name="megaphone" size={20} color="#e8c848" />Semua Pengumuman<span className="badge">{announcements.length}</span></h2>
       </div>
+      <div className="section-divider" />
+      {/* Search bar */}
+      <div style={{ position: "relative", marginBottom: 14 }}>
+        <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text2)", fontSize: 15 }}>🔍</span>
+        <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Cari pengumuman..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+      <div className="card-grid card-grid-2">
+        {filtered.map(a => <AnnouncementCard key={a.id} ann={a} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />)}
+      </div>
+      {!filtered.length && <div style={{ textAlign: "center", color: "var(--text2)", padding: 32 }}>Tidak ada pengumuman ditemukan.</div>}
     </div>
   );
 }
@@ -1097,23 +1210,33 @@ function SchedulePage({ schedules }) {
 }
 
 // ─── INFO PAGE ───────────────────────────────────────────────
-function InfoPage({ infoList }) {
+function InfoPage({ infoList, likes, setLikes, comments, setComments, currentUser }) {
   const [filter, setFilter] = useState("Semua");
+  const [search, setSearch] = useState("");
   const types = ["Semua", "Insiden", "Informasi", "Peringatan"];
-  const filtered = filter === "Semua" ? infoList : infoList.filter(i => i.type === filter);
+  const filtered = infoList
+    .filter(i => filter === "Semua" || i.type === filter)
+    .filter(i => i.title.toLowerCase().includes(search.toLowerCase()) || i.content.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="section">
       <div className="section-header">
-        <h2 className="section-title"><Icon name="info" size={22} color="#e8c848" />Informasi KAI<span className="badge">{infoList.length}</span></h2>
-        <div style={{ display: "flex", gap: 6 }}>
+        <h2 className="section-title"><Icon name="info" size={20} color="#e8c848" />Informasi KAI<span className="badge">{infoList.length}</span></h2>
+      </div>
+      <div className="section-divider" />
+      {/* Search + Filter */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text2)", fontSize: 15 }}>🔍</span>
+          <input className="form-input" style={{ paddingLeft: 32 }} placeholder="Cari info KAI..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div style={{ display: "flex", gap: 5 }}>
           {types.map(t => <button key={t} className={`action-btn ${filter === t ? "approve" : "edit"}`} onClick={() => setFilter(t)}>{t}</button>)}
         </div>
       </div>
-      <div className="section-divider" />
       <div className="card-grid card-grid-2">
-        {filtered.map(i => <InfoCard key={i.id} item={i} />)}
+        {filtered.map(i => <InfoCard key={i.id} item={i} likes={likes} setLikes={setLikes} comments={comments} setComments={setComments} currentUser={currentUser} />)}
       </div>
-      {!filtered.length && <div style={{ textAlign: "center", color: "var(--text2)", padding: 40 }}>Tidak ada informasi tersedia.</div>}
+      {!filtered.length && <div style={{ textAlign: "center", color: "var(--text2)", padding: 32 }}>Tidak ada informasi ditemukan.</div>}
     </div>
   );
 }
