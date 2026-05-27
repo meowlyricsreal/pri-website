@@ -22,7 +22,9 @@ const ROLE_COLORS = {
   Owner: "#10b981",
 };
 
-// ─── INITIAL DATA ────────────────────────────────────────────
+const INIT_EVENTS = [];
+const INIT_PLAYLIST = [];
+
 const INIT_USERS = [
   {
     id: 1,
@@ -674,6 +676,8 @@ export default function App() {
   const [groups, setGroups] = useLocalStorage("pri_groups", INIT_GROUPS);
   const [likes, setLikes] = useLocalStorage("pri_likes", {});
   const [comments, setComments] = useLocalStorage("pri_comments", {});
+  const [events, setEvents] = useLocalStorage("pri_events", INIT_EVENTS);
+  const [playlist, setPlaylist] = useLocalStorage("pri_playlist", INIT_PLAYLIST);
 
   // Auth — simpan sesi login
   const [currentUser, setCurrentUser] = useLocalStorage("pri_session", null);
@@ -716,6 +720,14 @@ export default function App() {
   return (
     <>
       <style>{css}</style>
+
+      {/* Music Player */}
+      {playlist.length > 0 && <MusicPlayer playlist={playlist} />}
+
+      {/* Active Event Banner + Fireworks */}
+      {events.filter(e => e.active).map(e => (
+        <EventBanner key={e.id} event={e} />
+      ))}
 
       {/* Navbar */}
       <nav className="navbar">
@@ -805,6 +817,8 @@ export default function App() {
           infoList={infoList} setInfoList={setInfoList}
           ads={ads} setAds={setAds}
           groups={groups} setGroups={setGroups}
+          events={events} setEvents={setEvents}
+          playlist={playlist} setPlaylist={setPlaylist}
           showToast={showToast}
         />
       )}
@@ -1414,7 +1428,7 @@ function ProfilePage({ currentUser, groups, navigate }) {
 }
 
 // ─── ADMIN PANEL ─────────────────────────────────────────────
-function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setAnnouncements, schedules, setSchedules, infoList, setInfoList, ads, setAds, groups, setGroups, showToast }) {
+function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setAnnouncements, schedules, setSchedules, infoList, setInfoList, ads, setAds, groups, setGroups, events, setEvents, playlist, setPlaylist, showToast }) {
   const [tab, setTab] = useState("overview");
 
   const adminTabs = [
@@ -1422,7 +1436,9 @@ function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setA
     { key: "announcements", label: "Pengumuman", icon: "megaphone" },
     { key: "schedules", label: "Jadwal KAI", icon: "train" },
     { key: "info", label: "Info KAI", icon: "info" },
-    { key: "ads", label: "Iklan", icon: "star" },
+    { key: "events", label: "Event", icon: "star" },
+    { key: "music", label: "Muzik", icon: "bell" },
+    { key: "ads", label: "Iklan", icon: "megaphone" },
     { key: "groups", label: "Grup", icon: "users" },
     ...(isOwner ? [{ key: "users", label: "Manajemen User", icon: "shield" }] : []),
   ];
@@ -1444,7 +1460,7 @@ function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setA
         {isOwner && (
           <button className="admin-nav-item" style={{ marginTop: 12, color: "#f87171" }} onClick={() => {
             if (window.confirm("Reset semua data ke asal? Ini akan padam semua data yang disimpan!")) {
-              ["pri_users","pri_announcements","pri_schedules","pri_info","pri_ads","pri_groups","pri_session"].forEach(k => localStorage.removeItem(k));
+              ["pri_users","pri_announcements","pri_schedules","pri_info","pri_ads","pri_groups","pri_events","pri_playlist","pri_session"].forEach(k => localStorage.removeItem(k));
               window.location.reload();
             }
           }}>
@@ -1458,6 +1474,8 @@ function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setA
         {tab === "announcements" && <AdminAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} currentUser={currentUser} showToast={showToast} />}
         {tab === "schedules" && <AdminSchedules schedules={schedules} setSchedules={setSchedules} showToast={showToast} />}
         {tab === "info" && <AdminInfo infoList={infoList} setInfoList={setInfoList} currentUser={currentUser} showToast={showToast} />}
+        {tab === "events" && <AdminEvents events={events} setEvents={setEvents} showToast={showToast} />}
+        {tab === "music" && <AdminMusic playlist={playlist} setPlaylist={setPlaylist} showToast={showToast} />}
         {tab === "ads" && <AdminAds ads={ads} setAds={setAds} showToast={showToast} />}
         {tab === "groups" && <AdminGroups groups={groups} setGroups={setGroups} showToast={showToast} />}
         {tab === "users" && isOwner && <AdminUsers users={users} setUsers={setUsers} showToast={showToast} />}
@@ -1960,6 +1978,228 @@ function AdminUsers({ users, setUsers, showToast }) {
               </select>
             </div>
             <button className="form-btn" onClick={handleRoleChange}>Simpan Role</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── FIREWORKS ────────────────────────────────────────────────
+function Fireworks() {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const particles = [];
+    const colors = ["#e8c848","#f87171","#60a5fa","#4ade80","#c084fc","#fb923c","#fff"];
+    const createBurst = (x, y) => {
+      for (let i = 0; i < 40; i++) {
+        const angle = (Math.PI * 2 / 40) * i;
+        const speed = Math.random() * 4 + 1;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: colors[Math.floor(Math.random() * colors.length)], life: 1, size: Math.random() * 3 + 1 });
+      }
+    };
+    let frame;
+    const timer = setInterval(() => { createBurst(Math.random() * canvas.width, Math.random() * canvas.height * 0.6); }, 900);
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.018; p.vx *= 0.98;
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      frame = requestAnimationFrame(animate);
+    };
+    animate();
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    window.addEventListener("resize", resize);
+    return () => { cancelAnimationFrame(frame); clearInterval(timer); window.removeEventListener("resize", resize); };
+  }, []);
+  return <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9998 }} />;
+}
+
+// ─── EVENT BANNER ─────────────────────────────────────────────
+function EventBanner({ event }) {
+  const [visible, setVisible] = useState(true);
+  if (!visible) return null;
+  return (
+    <>
+      <Fireworks />
+      <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 9997, background: "linear-gradient(135deg,#0f1535ee,#1a0a2eee)", border: "2px solid var(--gold)", borderRadius: 16, padding: "16px 24px", textAlign: "center", maxWidth: "90vw", minWidth: 260, backdropFilter: "blur(12px)", boxShadow: "0 0 40px rgba(232,200,72,0.3)", animation: "eventPop 0.4s ease" }}>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
+        <div style={{ fontFamily: "var(--font-head)", fontSize: 20, color: "var(--gold)", fontWeight: 800, marginBottom: 6 }}>{event.title}</div>
+        <div style={{ fontSize: 14, color: "var(--text)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{event.description}</div>
+        <button onClick={() => setVisible(false)} style={{ marginTop: 14, padding: "6px 20px", background: "var(--gold)", color: "var(--navy)", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Tutup ✕</button>
+      </div>
+      <style>{`@keyframes eventPop{from{opacity:0;transform:translateX(-50%) scale(0.85)}to{opacity:1;transform:translateX(-50%) scale(1)}}`}</style>
+    </>
+  );
+}
+
+// ─── MUSIC PLAYER ─────────────────────────────────────────────
+function MusicPlayer({ playlist }) {
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [vol, setVol] = useState(0.5);
+  const [minimized, setMinimized] = useState(false);
+  const audioRef = useRef(null);
+  const current = playlist[idx] || null;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !current) return;
+    audio.src = current.url;
+    audio.volume = vol;
+    if (playing) audio.play().catch(() => {});
+  }, [idx]);
+
+  useEffect(() => { if (audioRef.current) audioRef.current.volume = vol; }, [vol]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); setPlaying(false); }
+    else { audio.play().catch(() => {}); setPlaying(true); }
+  };
+  const next = () => setIdx(i => (i + 1) % playlist.length);
+  const prev = () => setIdx(i => (i - 1 + playlist.length) % playlist.length);
+
+  return (
+    <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 9990, background: "rgba(15,21,53,0.97)", border: "1px solid var(--border)", borderRadius: 14, padding: minimized ? "10px 14px" : "14px 16px", backdropFilter: "blur(16px)", boxShadow: "0 4px 24px rgba(0,0,0,0.5)", minWidth: minimized ? "auto" : 240, transition: "all 0.2s" }}>
+      <audio ref={audioRef} onEnded={next} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 16 }}>🎵</span>
+        {!minimized && current && <div style={{ flex: 1, overflow: "hidden" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{current.title}</div>
+          <div style={{ fontSize: 10, color: "var(--text2)" }}>{current.artist || ""}</div>
+        </div>}
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          {!minimized && <button onClick={prev} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 15, padding: 2 }}>⏮</button>}
+          <button onClick={togglePlay} style={{ background: "var(--gold)", border: "none", color: "var(--navy)", cursor: "pointer", borderRadius: "50%", width: 30, height: 30, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? "⏸" : "▶"}</button>
+          {!minimized && <button onClick={next} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 15, padding: 2 }}>⏭</button>}
+          <button onClick={() => setMinimized(m => !m)} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 13, padding: 2 }}>{minimized ? "⬆" : "⬇"}</button>
+        </div>
+      </div>
+      {!minimized && (
+        <>
+          <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11 }}>🔈</span>
+            <input type="range" min={0} max={1} step={0.05} value={vol} onChange={e => setVol(Number(e.target.value))} style={{ flex: 1, accentColor: "var(--gold)" }} />
+            <span style={{ fontSize: 10, color: "var(--text2)" }}>{Math.round(vol * 100)}%</span>
+          </div>
+          <div style={{ fontSize: 10, color: "var(--text2)", marginTop: 6, textAlign: "center" }}>{idx + 1}/{playlist.length} • Auto ulang 🔁</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── ADMIN EVENTS ─────────────────────────────────────────────
+function AdminEvents({ events, setEvents, showToast }) {
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", active: true });
+  const handleSave = () => {
+    if (!form.title) { alert("Tajuk event wajib diisi."); return; }
+    setEvents(e => [...e, { id: Date.now(), ...form }]);
+    showToast("Event ditambahkan!"); setModal(false);
+    setForm({ title: "", description: "", active: true });
+  };
+  return (
+    <>
+      <div className="admin-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div><div className="admin-title">Manajemen Event 🎉</div><div className="admin-sub">Event aktif akan tampil dengan animasi bunga api di website</div></div>
+        <button className="btn-primary" onClick={() => setModal(true)}><Icon name="plus" size={16} />Tambah Event</button>
+      </div>
+      {events.length === 0 && <div style={{ textAlign: "center", color: "var(--text2)", padding: 32 }}>Belum ada event.</div>}
+      <div className="card-grid card-grid-2" style={{ marginTop: 8 }}>
+        {events.map(ev => (
+          <div key={ev.id} className="card" style={{ borderLeft: `3px solid ${ev.active ? "var(--gold)" : "var(--border)"}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, color: "white" }}>🎉 {ev.title}</div>
+              <span className={`status-badge ${ev.active ? "status-ok" : "status-cancel"}`}>{ev.active ? "Aktif" : "Tidak Aktif"}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text2)", whiteSpace: "pre-wrap", marginBottom: 12 }}>{ev.description}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className={`action-btn ${ev.active ? "delete" : "approve"}`} onClick={() => { setEvents(e => e.map(x => x.id === ev.id ? { ...x, active: !x.active } : x)); showToast(ev.active ? "Event dimatikan!" : "Event diaktifkan!"); }}>
+                {ev.active ? "⏹ Matikan" : "▶ Aktifkan"}
+              </button>
+              <button className="action-btn delete" onClick={() => { setEvents(e => e.filter(x => x.id !== ev.id)); showToast("Event dihapus!", "error"); }}><Icon name="trash" size={12} />Hapus</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {modal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header"><div className="modal-title">Tambah Event Baru</div><button className="modal-close" onClick={() => setModal(false)}><Icon name="x" size={20} /></button></div>
+            <div className="form-group"><label className="form-label">Tajuk Event</label><input className="form-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Cth: Selamat Hari Raya!" /></div>
+            <div className="form-group"><label className="form-label">Teks Ucapan</label><textarea className="form-input" rows={4} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Teks yang akan muncul dalam banner event..." /></div>
+            <div className="form-group" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="checkbox" id="ev_active" checked={form.active} onChange={e => setForm({ ...form, active: e.target.checked })} style={{ width: 16, height: 16 }} />
+              <label htmlFor="ev_active" className="form-label" style={{ margin: 0 }}>Aktifkan event sekarang (bunga api akan muncul)</label>
+            </div>
+            <button className="form-btn" onClick={handleSave}>Tambah Event</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── ADMIN MUSIC ──────────────────────────────────────────────
+function AdminMusic({ playlist, setPlaylist, showToast }) {
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ title: "", artist: "", url: "" });
+  const handleSave = () => {
+    if (!form.title || !form.url) { alert("Tajuk dan URL lagu wajib diisi."); return; }
+    setPlaylist(p => [...p, { id: Date.now(), ...form }]);
+    showToast("Lagu ditambahkan!"); setModal(false);
+    setForm({ title: "", artist: "", url: "" });
+  };
+  return (
+    <>
+      <div className="admin-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div><div className="admin-title">Manajemen Muzik 🎵</div><div className="admin-sub">Lagu auto ulang bila habis senarai. Guna direct link MP3.</div></div>
+        <button className="btn-primary" onClick={() => setModal(true)}><Icon name="plus" size={16} />Tambah Lagu</button>
+      </div>
+      {playlist.length === 0 && <div style={{ background: "rgba(232,200,72,0.08)", border: "1px solid rgba(232,200,72,0.2)", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "var(--gold)", marginBottom: 16 }}>
+        💡 Tambah lagu dengan URL direct MP3 (dari archive.org, Dropbox ?dl=1, atau GitHub raw).
+      </div>}
+      <div className="table-wrap">
+        <table className="admin-table">
+          <thead><tr><th>#</th><th>Tajuk Lagu</th><th>Artis</th><th>URL</th><th>Hapus</th></tr></thead>
+          <tbody>
+            {playlist.map((s, i) => (
+              <tr key={s.id}>
+                <td style={{ color: "var(--gold)", fontWeight: 700 }}>{i + 1}</td>
+                <td style={{ fontWeight: 600 }}>{s.title}</td>
+                <td style={{ color: "var(--text2)" }}>{s.artist || "-"}</td>
+                <td><a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", fontSize: 12 }}>Buka</a></td>
+                <td><button className="action-btn delete" onClick={() => { setPlaylist(p => p.filter(x => x.id !== s.id)); showToast("Lagu dihapus!", "error"); }}><Icon name="trash" size={12} /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {modal && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <div className="modal-header"><div className="modal-title">Tambah Lagu</div><button className="modal-close" onClick={() => setModal(false)}><Icon name="x" size={20} /></button></div>
+            <div className="form-group"><label className="form-label">Tajuk Lagu</label><input className="form-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Cth: Sepanjang Jalan Kenangan" /></div>
+            <div className="form-group"><label className="form-label">Artis (optional)</label><input className="form-input" value={form.artist} onChange={e => setForm({ ...form, artist: e.target.value })} placeholder="Cth: Koes Plus" /></div>
+            <div className="form-group">
+              <label className="form-label">URL Direct MP3</label>
+              <input className="form-input" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
+              <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 4 }}>💡 Mesti direct link ke fail .mp3</div>
+            </div>
+            <button className="form-btn" onClick={handleSave}>Tambah Lagu</button>
           </div>
         </div>
       )}
