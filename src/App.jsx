@@ -2185,25 +2185,63 @@ function EventBanner({ event }) {
   );
 }
 
-// ─── MUSIC PLAYER ─────────────────────────────────────────────
-// ─── MUSIC PLAYER (background only, no UI) ───────────────────
+
+// ─── MUSIC PLAYER (support direct link + upload + YouTube) ───────────────────
 function MusicPlayerHidden({ playlist }) {
   const [idx, setIdx] = useState(0);
   const audioRef = useRef(null);
+
   const current = playlist[idx] || null;
 
+  const getYoutubeId = (url) => {
+    const reg =
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&]+)/;
+    return url.match(reg)?.[1];
+  };
+
   useEffect(() => {
+    if (!current) return;
+
+    if (current.type === "youtube") return;
+
     const audio = audioRef.current;
-    if (!audio || !current) return;
+    if (!audio) return;
+
     audio.src = current.url;
     audio.volume = 0.5;
     audio.play().catch(() => {});
-  }, [idx]);
+  }, [idx, current]);
 
-  const next = () => setIdx(i => (i + 1) % playlist.length);
+  const next = () => {
+    setIdx((i) => (i + 1) % playlist.length);
+  };
 
-  return <audio ref={audioRef} onEnded={next} style={{ display: "none" }} />;
+  if (!current) return null;
+
+  if (current.type === "youtube") {
+    const videoId = getYoutubeId(current.url);
+
+    return (
+      <iframe
+        width="0"
+        height="0"
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}`}
+        title="YouTube Music"
+        allow="autoplay"
+        style={{ display: "none" }}
+      />
+    );
+  }
+
+  return (
+    <audio
+      ref={audioRef}
+      onEnded={next}
+      style={{ display: "none" }}
+    />
+  );
 }
+
 
 // ─── ADMIN EVENTS ─────────────────────────────────────────────
 function AdminEvents({ events, setEvents, showToast }) {
@@ -2257,53 +2295,285 @@ function AdminEvents({ events, setEvents, showToast }) {
   );
 }
 
+
 // ─── ADMIN MUSIC ──────────────────────────────────────────────
 function AdminMusic({ playlist, setPlaylist, showToast }) {
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ title: "", artist: "", url: "" });
-  const handleSave = () => {
-    if (!form.title || !form.url) { alert("Tajuk dan URL lagu wajib diisi."); return; }
-    setPlaylist(p => [...p, { id: Date.now(), ...form }]);
-    showToast("Lagu ditambahkan!"); setModal(false);
-    setForm({ title: "", artist: "", url: "" });
+
+  const [form, setForm] = useState({
+    title: "",
+    artist: "",
+    url: "",
+    type: "direct",
+  });
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileUrl = URL.createObjectURL(file);
+
+    setForm((f) => ({
+      ...f,
+      url: fileUrl,
+      type: "upload",
+      title: f.title || file.name,
+    }));
   };
+
+  const handleSave = () => {
+    if (!form.title || !form.url) {
+      alert("Tajuk dan lagu wajib diisi.");
+      return;
+    }
+
+    setPlaylist((p) => [
+      ...p,
+      {
+        id: Date.now(),
+        title: form.title,
+        artist: form.artist,
+        url: form.url,
+        type: form.type,
+      },
+    ]);
+
+    showToast("Lagu berjaya ditambahkan!");
+    setModal(false);
+
+    setForm({
+      title: "",
+      artist: "",
+      url: "",
+      type: "direct",
+    });
+  };
+
   return (
     <>
-      <div className="admin-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div className="admin-title">Manajemen Muzik 🎵</div><div className="admin-sub">Lagu auto ulang bila habis senarai. Guna direct link MP3.</div></div>
-        <button className="btn-primary" onClick={() => setModal(true)}><Icon name="plus" size={16} />Tambah Lagu</button>
+      <div
+        className="admin-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        }}
+      >
+        <div>
+          <div className="admin-title">Manajemen Muzik 🎵</div>
+          <div className="admin-sub">
+            Support:
+            <br />
+            • Upload file MP3
+            <br />
+            • Direct link MP3
+            <br />
+            • Link YouTube
+          </div>
+        </div>
+
+        <button
+          className="btn-primary"
+          onClick={() => setModal(true)}
+        >
+          <Icon name="plus" size={16} />
+          Tambah Lagu
+        </button>
       </div>
-      {playlist.length === 0 && <div style={{ background: "rgba(232,200,72,0.08)", border: "1px solid rgba(232,200,72,0.2)", borderRadius: 10, padding: "12px 16px", fontSize: 13, color: "var(--gold)", marginBottom: 16 }}>
-        💡 Tambah lagu dengan URL direct MP3 (dari archive.org, Dropbox ?dl=1, atau GitHub raw).
-      </div>}
+
       <div className="table-wrap">
         <table className="admin-table">
-          <thead><tr><th>#</th><th>Tajuk Lagu</th><th>Artis</th><th>URL</th><th>Hapus</th></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Tajuk</th>
+              <th>Artis</th>
+              <th>Jenis</th>
+              <th>Hapus</th>
+            </tr>
+          </thead>
+
           <tbody>
             {playlist.map((s, i) => (
               <tr key={s.id}>
-                <td style={{ color: "var(--gold)", fontWeight: 700 }}>{i + 1}</td>
-                <td style={{ fontWeight: 600 }}>{s.title}</td>
-                <td style={{ color: "var(--text2)" }}>{s.artist || "-"}</td>
-                <td><a href={s.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--gold)", fontSize: 12 }}>Buka</a></td>
-                <td><button className="action-btn delete" onClick={() => { setPlaylist(p => p.filter(x => x.id !== s.id)); showToast("Lagu dihapus!", "error"); }}><Icon name="trash" size={12} /></button></td>
+                <td
+                  style={{
+                    color: "var(--gold)",
+                    fontWeight: 700,
+                  }}
+                >
+                  {i + 1}
+                </td>
+
+                <td style={{ fontWeight: 600 }}>
+                  {s.title}
+                </td>
+
+                <td style={{ color: "var(--text2)" }}>
+                  {s.artist || "-"}
+                </td>
+
+                <td>
+                  <span className="status-badge status-ok">
+                    {s.type}
+                  </span>
+                </td>
+
+                <td>
+                  <button
+                    className="action-btn delete"
+                    onClick={() => {
+                      setPlaylist((p) =>
+                        p.filter((x) => x.id !== s.id)
+                      );
+                      showToast("Lagu dihapus");
+                    }}
+                  >
+                    Hapus
+                  </button>
+                </td>
               </tr>
             ))}
+
+            {playlist.length === 0 && (
+              <tr>
+                <td
+                  colSpan={5}
+                  style={{
+                    textAlign: "center",
+                    padding: 20,
+                    color: "var(--text2)",
+                  }}
+                >
+                  Belum ada lagu.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
       {modal && (
         <div className="modal-overlay">
-          <div className="modal-box">
-            <div className="modal-header"><div className="modal-title">Tambah Lagu</div><button className="modal-close" onClick={() => setModal(false)}><Icon name="x" size={20} /></button></div>
-            <div className="form-group"><label className="form-label">Tajuk Lagu</label><input className="form-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Cth: Sepanjang Jalan Kenangan" /></div>
-            <div className="form-group"><label className="form-label">Artis (optional)</label><input className="form-input" value={form.artist} onChange={e => setForm({ ...form, artist: e.target.value })} placeholder="Cth: Koes Plus" /></div>
-            <div className="form-group">
-              <label className="form-label">URL Direct MP3</label>
-              <input className="form-input" value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="https://..." />
-              <div style={{ fontSize: 11, color: "var(--text2)", marginTop: 4 }}>💡 Mesti direct link ke fail .mp3</div>
+          <div className="modal">
+            <div className="modal-title">
+              Tambah Lagu
             </div>
-            <button className="form-btn" onClick={handleSave}>Tambah Lagu</button>
+
+            <div className="form-group">
+              <label>Tajuk Lagu</label>
+              <input
+                className="input"
+                value={form.title}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    title: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Artis</label>
+              <input
+                className="input"
+                value={form.artist}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    artist: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Jenis Lagu</label>
+
+              <select
+                className="input"
+                value={form.type}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    type: e.target.value,
+                    url: "",
+                  })
+                }
+              >
+                <option value="direct">
+                  Direct Link
+                </option>
+
+                <option value="upload">
+                  Upload File
+                </option>
+
+                <option value="youtube">
+                  YouTube
+                </option>
+              </select>
+            </div>
+
+            {form.type === "upload" ? (
+              <div className="form-group">
+                <label>Upload MP3</label>
+
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="input"
+                  onChange={handleFileUpload}
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label>
+                  {form.type === "youtube"
+                    ? "Link YouTube"
+                    : "Direct MP3 URL"}
+                </label>
+
+                <input
+                  className="input"
+                  value={form.url}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      url: e.target.value,
+                    })
+                  }
+                  placeholder={
+                    form.type === "youtube"
+                      ? "https://youtube.com/watch?v=..."
+                      : "https://example.com/song.mp3"
+                  }
+                />
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 20,
+              }}
+            >
+              <button
+                className="btn-primary"
+                onClick={handleSave}
+              >
+                Simpan
+              </button>
+
+              <button
+                className="nav-btn ghost"
+                onClick={() => setModal(false)}
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </div>
       )}
