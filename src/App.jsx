@@ -721,8 +721,8 @@ export default function App() {
     <>
       <style>{css}</style>
 
-      {/* Music Player */}
-      {playlist.length > 0 && <MusicPlayer playlist={playlist} />}
+      {/* Music Player — hidden, audio still plays in background */}
+      {playlist.length > 0 && <MusicPlayerHidden playlist={playlist} />}
 
       {/* Active Event Banner + Fireworks */}
       {events.filter(e => e.active).map(e => (
@@ -2186,11 +2186,9 @@ function EventBanner({ event }) {
 }
 
 // ─── MUSIC PLAYER ─────────────────────────────────────────────
-function MusicPlayer({ playlist }) {
+// ─── MUSIC PLAYER (background only, no UI) ───────────────────
+function MusicPlayerHidden({ playlist }) {
   const [idx, setIdx] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [vol, setVol] = useState(0.5);
-  const [minimized, setMinimized] = useState(false);
   const audioRef = useRef(null);
   const current = playlist[idx] || null;
 
@@ -2198,49 +2196,13 @@ function MusicPlayer({ playlist }) {
     const audio = audioRef.current;
     if (!audio || !current) return;
     audio.src = current.url;
-    audio.volume = vol;
-    if (playing) audio.play().catch(() => {});
+    audio.volume = 0.5;
+    audio.play().catch(() => {});
   }, [idx]);
 
-  useEffect(() => { if (audioRef.current) audioRef.current.volume = vol; }, [vol]);
-
-  const togglePlay = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) { audio.pause(); setPlaying(false); }
-    else { audio.play().catch(() => {}); setPlaying(true); }
-  };
   const next = () => setIdx(i => (i + 1) % playlist.length);
-  const prev = () => setIdx(i => (i - 1 + playlist.length) % playlist.length);
 
-  return (
-    <div style={{ position: "fixed", bottom: 16, left: 16, zIndex: 9990, background: "rgba(15,21,53,0.97)", border: "1px solid var(--border)", borderRadius: 14, padding: minimized ? "10px 14px" : "14px 16px", backdropFilter: "blur(16px)", boxShadow: "0 4px 24px rgba(0,0,0,0.5)", minWidth: minimized ? "auto" : 240, transition: "all 0.2s" }}>
-      <audio ref={audioRef} onEnded={next} />
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 16 }}>🎵</span>
-        {!minimized && current && <div style={{ flex: 1, overflow: "hidden" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{current.title}</div>
-          <div style={{ fontSize: 10, color: "var(--text2)" }}>{current.artist || ""}</div>
-        </div>}
-        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-          {!minimized && <button onClick={prev} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 15, padding: 2 }}>⏮</button>}
-          <button onClick={togglePlay} style={{ background: "var(--gold)", border: "none", color: "var(--navy)", cursor: "pointer", borderRadius: "50%", width: 30, height: 30, fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{playing ? "⏸" : "▶"}</button>
-          {!minimized && <button onClick={next} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 15, padding: 2 }}>⏭</button>}
-          <button onClick={() => setMinimized(m => !m)} style={{ background: "none", border: "none", color: "var(--text2)", cursor: "pointer", fontSize: 13, padding: 2 }}>{minimized ? "⬆" : "⬇"}</button>
-        </div>
-      </div>
-      {!minimized && (
-        <>
-          <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11 }}>🔈</span>
-            <input type="range" min={0} max={1} step={0.05} value={vol} onChange={e => setVol(Number(e.target.value))} style={{ flex: 1, accentColor: "var(--gold)" }} />
-            <span style={{ fontSize: 10, color: "var(--text2)" }}>{Math.round(vol * 100)}%</span>
-          </div>
-          <div style={{ fontSize: 10, color: "var(--text2)", marginTop: 6, textAlign: "center" }}>{idx + 1}/{playlist.length} • Auto ulang 🔁</div>
-        </>
-      )}
-    </div>
-  );
+  return <audio ref={audioRef} onEnded={next} style={{ display: "none" }} />;
 }
 
 // ─── ADMIN EVENTS ─────────────────────────────────────────────
