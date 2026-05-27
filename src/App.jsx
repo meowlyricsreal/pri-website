@@ -1995,21 +1995,23 @@ function Fireworks() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     const particles = [];
-    const colors = ["#e8c848","#f87171","#60a5fa","#4ade80","#c084fc","#fb923c","#fff"];
+    const colors = ["#e8c848","#f87171","#60a5fa","#4ade80","#c084fc","#fb923c","#fff","#f9a8d4"];
     const createBurst = (x, y) => {
-      for (let i = 0; i < 40; i++) {
-        const angle = (Math.PI * 2 / 40) * i;
-        const speed = Math.random() * 4 + 1;
-        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: colors[Math.floor(Math.random() * colors.length)], life: 1, size: Math.random() * 3 + 1 });
+      for (let i = 0; i < 60; i++) {
+        const angle = (Math.PI * 2 / 60) * i;
+        const speed = Math.random() * 6 + 2;
+        particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: colors[Math.floor(Math.random() * colors.length)], life: 1, size: Math.random() * 4 + 1, type: Math.random() > 0.5 ? "circle" : "star" });
       }
     };
     let frame;
-    const timer = setInterval(() => { createBurst(Math.random() * canvas.width, Math.random() * canvas.height * 0.6); }, 900);
+    const timer = setInterval(() => {
+      createBurst(Math.random() * canvas.width, Math.random() * canvas.height * 0.7);
+    }, 700);
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.life -= 0.018; p.vx *= 0.98;
+        p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.016; p.vx *= 0.98;
         if (p.life <= 0) { particles.splice(i, 1); continue; }
         ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
@@ -2022,23 +2024,163 @@ function Fireworks() {
     window.addEventListener("resize", resize);
     return () => { cancelAnimationFrame(frame); clearInterval(timer); window.removeEventListener("resize", resize); };
   }, []);
-  return <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9998 }} />;
+  return <canvas ref={canvasRef} style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9996 }} />;
+}
+
+// ─── BALLOONS ─────────────────────────────────────────────────
+function Balloons() {
+  const balloons = [
+    { color: "#f87171", x: 8, delay: 0, size: 54 },
+    { color: "#60a5fa", x: 18, delay: 0.4, size: 46 },
+    { color: "#4ade80", x: 30, delay: 0.8, size: 58 },
+    { color: "#e8c848", x: 60, delay: 0.2, size: 50 },
+    { color: "#c084fc", x: 72, delay: 0.6, size: 44 },
+    { color: "#fb923c", x: 82, delay: 1.0, size: 56 },
+    { color: "#f9a8d4", x: 91, delay: 0.3, size: 48 },
+    { color: "#34d399", x: 50, delay: 0.7, size: 52 },
+  ];
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 9995, overflow: "hidden" }}>
+      <style>{`
+        @keyframes floatUp {
+          0% { transform: translateY(110vh) rotate(-5deg); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-20vh) rotate(5deg); opacity: 0; }
+        }
+        @keyframes sway {
+          0%,100% { transform: translateX(0); }
+          50% { transform: translateX(18px); }
+        }
+      `}</style>
+      {balloons.map((b, i) => (
+        <div key={i} style={{
+          position: "absolute", left: `${b.x}%`, bottom: -80,
+          animation: `floatUp ${7 + i * 0.5}s ease-in-out ${b.delay}s infinite`,
+        }}>
+          <div style={{ animation: `sway ${2.5 + i * 0.3}s ease-in-out infinite`, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            {/* Belon */}
+            <div style={{
+              width: b.size, height: b.size * 1.2,
+              background: `radial-gradient(circle at 35% 35%, white 0%, ${b.color} 30%, ${b.color}cc 100%)`,
+              borderRadius: "50% 50% 50% 50% / 60% 60% 40% 40%",
+              boxShadow: `0 4px 16px ${b.color}66`,
+              position: "relative",
+            }}>
+              {/* Highlight */}
+              <div style={{ position: "absolute", top: "18%", left: "22%", width: "28%", height: "20%", background: "rgba(255,255,255,0.55)", borderRadius: "50%", transform: "rotate(-30deg)" }} />
+              {/* Knot */}
+              <div style={{ position: "absolute", bottom: -6, left: "50%", transform: "translateX(-50%)", width: 8, height: 8, background: b.color, borderRadius: "50% 50% 40% 40%", filter: "brightness(0.7)" }} />
+            </div>
+            {/* Tali */}
+            <svg width="2" height="60" style={{ display: "block" }}>
+              <path d={`M1,0 Q${8 + i % 3 * 4},30 1,60`} stroke={b.color} strokeWidth="1.5" fill="none" opacity="0.7" />
+            </svg>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 // ─── EVENT BANNER ─────────────────────────────────────────────
 function EventBanner({ event }) {
-  const [visible, setVisible] = useState(true);
-  if (!visible) return null;
+  const storageKey = `pri_dismissed_event_${event.id}`;
+  const [visible, setVisible] = useState(() => {
+    try { return !sessionStorage.getItem(storageKey); } catch { return true; }
+  });
+  const [closing, setClosing] = useState(false);
+
+  const dismiss = () => {
+    setClosing(true);
+    setTimeout(() => {
+      try { sessionStorage.setItem(storageKey, "1"); } catch {}
+      setVisible(false);
+    }, 400);
+  };
+
   return (
     <>
       <Fireworks />
-      <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 9997, background: "linear-gradient(135deg,#0f1535ee,#1a0a2eee)", border: "2px solid var(--gold)", borderRadius: 16, padding: "16px 24px", textAlign: "center", maxWidth: "90vw", minWidth: 260, backdropFilter: "blur(12px)", boxShadow: "0 0 40px rgba(232,200,72,0.3)", animation: "eventPop 0.4s ease" }}>
-        <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
-        <div style={{ fontFamily: "var(--font-head)", fontSize: 20, color: "var(--gold)", fontWeight: 800, marginBottom: 6 }}>{event.title}</div>
-        <div style={{ fontSize: 14, color: "var(--text)", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{event.description}</div>
-        <button onClick={() => setVisible(false)} style={{ marginTop: 14, padding: "6px 20px", background: "var(--gold)", color: "var(--navy)", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Tutup ✕</button>
-      </div>
-      <style>{`@keyframes eventPop{from{opacity:0;transform:translateX(-50%) scale(0.85)}to{opacity:1;transform:translateX(-50%) scale(1)}}`}</style>
+      <Balloons />
+      {visible && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9997,
+          background: "rgba(5,8,25,0.82)",
+          backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 20,
+          animation: closing ? "eventFadeOut 0.4s ease forwards" : "eventFadeIn 0.5s ease",
+        }}>
+          <div style={{
+            background: "linear-gradient(145deg, #0f1535, #1a0a2e, #0a1628)",
+            border: "2px solid var(--gold)",
+            borderRadius: 24,
+            padding: "40px 32px",
+            textAlign: "center",
+            maxWidth: 480,
+            width: "100%",
+            boxShadow: "0 0 80px rgba(232,200,72,0.25), 0 24px 60px rgba(0,0,0,0.6)",
+            position: "relative",
+            overflow: "hidden",
+            animation: closing ? "eventSlideOut 0.4s ease forwards" : "eventSlideIn 0.5s ease",
+          }}>
+            {/* Decorative corner stars */}
+            <div style={{ position: "absolute", top: 14, left: 18, fontSize: 22, opacity: 0.6 }}>✨</div>
+            <div style={{ position: "absolute", top: 14, right: 18, fontSize: 22, opacity: 0.6 }}>✨</div>
+            <div style={{ position: "absolute", bottom: 14, left: 18, fontSize: 18, opacity: 0.4 }}>🌟</div>
+            <div style={{ position: "absolute", bottom: 14, right: 18, fontSize: 18, opacity: 0.4 }}>🌟</div>
+
+            {/* Glow line atas */}
+            <div style={{ position: "absolute", top: 0, left: "10%", right: "10%", height: 3, background: "linear-gradient(90deg, transparent, var(--gold), transparent)", borderRadius: 2 }} />
+
+            {/* Emoji besar */}
+            <div style={{ fontSize: 64, marginBottom: 12, lineHeight: 1, filter: "drop-shadow(0 4px 12px rgba(232,200,72,0.4))" }}>🎊</div>
+
+            {/* Mini tag */}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(232,200,72,0.12)", border: "1px solid rgba(232,200,72,0.3)", borderRadius: 100, padding: "4px 14px", fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
+              🎉 Event Khas PRI
+            </div>
+
+            {/* Tajuk */}
+            <div style={{ fontFamily: "var(--font-head)", fontSize: "clamp(22px,5vw,34px)", fontWeight: 900, color: "white", lineHeight: 1.2, marginBottom: 14, textShadow: "0 2px 20px rgba(232,200,72,0.3)" }}>
+              {event.title}
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: 60, height: 3, background: "var(--gold)", borderRadius: 2, margin: "0 auto 16px" }} />
+
+            {/* Deskripsi */}
+            <div style={{ fontSize: 15, color: "#d1d5eb", whiteSpace: "pre-wrap", lineHeight: 1.8, marginBottom: 28 }}>
+              {event.description}
+            </div>
+
+            {/* Emoji bawah */}
+            <div style={{ fontSize: 28, marginBottom: 20, letterSpacing: 8 }}>🎈🎀🎁🎈</div>
+
+            {/* Button tutup */}
+            <button onClick={dismiss} style={{
+              padding: "12px 36px",
+              background: "linear-gradient(135deg, var(--gold), var(--gold2))",
+              color: "var(--navy)", border: "none", borderRadius: 50,
+              fontWeight: 800, cursor: "pointer", fontSize: 15,
+              boxShadow: "0 4px 20px rgba(232,200,72,0.4)",
+              transition: "all 0.2s", letterSpacing: 0.5,
+            }}
+              onMouseEnter={e => e.target.style.transform = "scale(1.05)"}
+              onMouseLeave={e => e.target.style.transform = "scale(1)"}
+            >
+              Terima Kasih! 🎉
+            </button>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes eventFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes eventFadeOut { from { opacity:1 } to { opacity:0 } }
+        @keyframes eventSlideIn { from { opacity:0; transform:scale(0.8) translateY(30px) } to { opacity:1; transform:scale(1) translateY(0) } }
+        @keyframes eventSlideOut { from { opacity:1; transform:scale(1) } to { opacity:0; transform:scale(0.85) translateY(-20px) } }
+      `}</style>
     </>
   );
 }
