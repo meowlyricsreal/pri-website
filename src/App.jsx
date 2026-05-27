@@ -2187,38 +2187,27 @@ function EventBanner({ event }) {
 
 
 // ─── MUSIC PLAYER (support direct link + upload + YouTube) ───────────────────
+
 function MusicPlayerHidden({ playlist }) {
   const [idx, setIdx] = useState(0);
-  const audioRef = useRef(null);
 
-  const current = playlist[idx] || null;
-
-  const getYoutubeId = (url) => {
-    const reg =
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&]+)/;
-    return url.match(reg)?.[1];
-  };
-
-  useEffect(() => {
-    if (!current) return;
-
-    if (current.type === "youtube") return;
-
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.src = current.url;
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
-  }, [idx, current]);
-
-  const next = () => {
-    setIdx((i) => (i + 1) % playlist.length);
-  };
+  const current = playlist?.[idx];
 
   if (!current) return null;
 
+  const nextSong = () => {
+    setIdx((prev) => (prev + 1) % playlist.length);
+  };
+
+  // YouTube Player
   if (current.type === "youtube") {
+    const getYoutubeId = (url) => {
+      const reg =
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&]+)/;
+
+      return url.match(reg)?.[1];
+    };
+
     const videoId = getYoutubeId(current.url);
 
     return (
@@ -2233,14 +2222,19 @@ function MusicPlayerHidden({ playlist }) {
     );
   }
 
+  // MP3 / Upload Player
   return (
     <audio
-      ref={audioRef}
-      onEnded={next}
-      style={{ display: "none" }}
+      key={current.url}
+      src={current.url}
+      autoPlay
+      controls
+      hidden
+      onEnded={nextSong}
     />
   );
 }
+
 
 
 // ─── ADMIN EVENTS ─────────────────────────────────────────────
