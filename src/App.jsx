@@ -2332,12 +2332,13 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
     if (data.success) {
       setForm((f) => ({
         ...f,
-        url: `http://localhost:3001${data.url}`,
+        url: `https://ofiicial-web-pri.onrender.com${data.url}`,
         type: "upload",
         title: f.title || file.name,
       }))
 
       alert("Upload berjaya!")
+      console.log(data.url)
     }
   } catch (err) {
     console.error(err)
@@ -2346,7 +2347,7 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
 }
 
   const handleSave = () => {
-    if (!form.title || !form.url) {
+    if (!form.title) {
       alert("Tajuk dan lagu wajib diisi.");
       return;
     }
