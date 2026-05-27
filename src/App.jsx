@@ -717,7 +717,15 @@ export default function App() {
     { key: "groups", label: "Komunitas", icon: "users" },
   ];
 
-  return (
+  
+useEffect(() => {
+  localStorage.setItem(
+    "pri_playlist",
+    JSON.stringify(playlist)
+  );
+}, [playlist]);
+
+return (
     <>
       <style>{css}</style>
 
@@ -2304,6 +2312,10 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    alert(
+      "Untuk semua user dengar lagu sama, sila guna direct link atau letak lagu dalam public/music/"
+    );
 
     const fileUrl = URL.createObjectURL(file);
 
