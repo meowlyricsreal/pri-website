@@ -2309,23 +2309,41 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
     type: "direct",
   });
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleFileUpload = async (e) => {
+  const file = e.target.files[0]
 
-    alert(
-      "Untuk semua user dengar lagu sama, sila guna direct link atau letak lagu dalam public/music/"
-    );
+  if (!file) return
 
-    const fileUrl = URL.createObjectURL(file);
+  try {
+    const body = new FormData()
 
-    setForm((f) => ({
-      ...f,
-      url: fileUrl,
-      type: "upload",
-      title: f.title || file.name,
-    }));
-  };
+    body.append("music", file)
+
+    const res = await fetch(
+      "http://localhost:3001/upload-music",
+      {
+        method: "POST",
+        body,
+      }
+    )
+
+    const data = await res.json()
+
+    if (data.success) {
+      setForm((f) => ({
+        ...f,
+        url: `http://localhost:3001${data.url}`,
+        type: "upload",
+        title: f.title || file.name,
+      }))
+
+      alert("Upload berjaya!")
+    }
+  } catch (err) {
+    console.error(err)
+    alert("Upload gagal")
+  }
+}
 
   const handleSave = () => {
     if (!form.title || !form.url) {
