@@ -2320,7 +2320,7 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
     body.append("music", file)
 
     const res = await fetch(
-      "http://localhost:3001/upload-music",
+      "https://ofiicial-web-pri.onrender.com/upload-music",
       {
         method: "POST",
         body,
