@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence } from "firebase/firestore";
 
 // ============================================================
 // LOGO URL — GANTI LINK INI DENGAN LOGO AWAK
@@ -660,23 +658,35 @@ const firebaseConfig = {
   appId: "1:1055840324268:web:247ed14c8c42a1a4d2ed09",
 };
 
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
+let db = null;
+let fsDoc = null;
+let fsSetDoc = null;
+let fsGetDoc = null;
+let fsOnSnapshot = null;
 
-// Enable offline persistence
-try { enableIndexedDbPersistence(db).catch(() => {}); } catch {}
-
-// Helper — save collection to Firestore
-async function saveToFirestore(colName, data) {
+// Init Firebase lazily
+async function initFirebase() {
   try {
-    await setDoc(doc(db, "pri_data", colName), { value: JSON.stringify(data) });
-  } catch (e) { console.error("Firestore save error:", e); }
+    const { initializeApp } = await import("firebase/app");
+    const { getFirestore, doc, setDoc, getDoc, onSnapshot } = await import("firebase/firestore");
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    fsDoc = doc; fsSetDoc = setDoc; fsGetDoc = getDoc; fsOnSnapshot = onSnapshot;
+    return true;
+  } catch { return false; }
 }
 
-// Helper — load from Firestore once
+async function saveToFirestore(colName, data) {
+  try {
+    if (!db) return;
+    await fsSetDoc(fsDoc(db, "pri_data", colName), { value: JSON.stringify(data) });
+  } catch {}
+}
+
 async function loadFromFirestore(colName, fallback) {
   try {
-    const snap = await getDoc(doc(db, "pri_data", colName));
+    if (!db) return fallback;
+    const snap = await fsGetDoc(fsDoc(db, "pri_data", colName));
     if (snap.exists()) return JSON.parse(snap.data().value);
   } catch {}
   return fallback;
@@ -726,22 +736,33 @@ export default function App() {
     const setters = { users: setUsersState, announcements: setAnnouncementsState, schedules: setSchedulesState, infoList: setInfoListState, ads: setAdsState, groups: setGroupsState, likes: setLikesState, comments: setCommentsState, events: setEventsState, playlist: setPlaylistState };
     const defaults = { users: INIT_USERS, announcements: INIT_ANNOUNCEMENTS, schedules: INIT_SCHEDULES, infoList: INIT_INFO, ads: INIT_ADS, groups: INIT_GROUPS, likes: {}, comments: {}, events: INIT_EVENTS, playlist: INIT_PLAYLIST };
 
-    // Load once
-    Promise.all(collections.map(async col => {
-      const data = await loadFromFirestore(col, defaults[col]);
-      setters[col](data);
-    })).then(() => setLoading(false));
+    // Timeout — kalau 5 saat tak load, guna data default
+    const timeout = setTimeout(() => setLoading(false), 5000);
 
-    // Realtime listeners
-    const unsubs = collections.map(col =>
-      onSnapshot(doc(db, "pri_data", col), (snap) => {
-        if (snap.exists()) {
-          try { setters[col](JSON.parse(snap.data().value)); } catch {}
-        }
-      }, () => {})
-    );
+    initFirebase().then(async (ok) => {
+      if (!ok) { clearTimeout(timeout); setLoading(false); return; }
 
-    return () => unsubs.forEach(u => u());
+      // Load once
+      await Promise.all(collections.map(async col => {
+        const data = await loadFromFirestore(col, defaults[col]);
+        setters[col](data);
+      }));
+      clearTimeout(timeout);
+      setLoading(false);
+
+      // Realtime listeners
+      collections.forEach(col => {
+        try {
+          fsOnSnapshot(fsDoc(db, "pri_data", col), (snap) => {
+            if (snap.exists()) {
+              try { setters[col](JSON.parse(snap.data().value)); } catch {}
+            }
+          }, () => {});
+        } catch {}
+      });
+    });
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const showToast = (msg, type = "success") => {
