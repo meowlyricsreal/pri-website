@@ -3,10 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#e8c848" />
+    <meta name="description" content="Komunitas resmi para pecinta kereta api Indonesia" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PRI" />
+    <link rel="manifest" href="/pri-website/manifest.json" />
     <title>Persatuan Railfans Indonesia</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/pri-website/sw.js')
+            .then(() => console.log('SW registered'))
+            .catch(() => console.log('SW failed'));
+        });
+      }
+    </script>
   </body>
 </html>
