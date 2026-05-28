@@ -648,122 +648,40 @@ const css = `
   }
 `;
 
-// ─── FIREBASE CONFIG ─────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyAxVpid1wtUneDxpsJxaQqdin7isgxnhck",
-  authDomain: "pri-website-9abad.firebaseapp.com",
-  projectId: "pri-website-9abad",
-  storageBucket: "pri-website-9abad.firebasestorage.app",
-  messagingSenderId: "1055840324268",
-  appId: "1:1055840324268:web:247ed14c8c42a1a4d2ed09",
-};
-
-let db = null;
-let fsDoc = null;
-let fsSetDoc = null;
-let fsGetDoc = null;
-let fsOnSnapshot = null;
-
-// Init Firebase lazily
-async function initFirebase() {
-  try {
-    const { initializeApp } = await import("firebase/app");
-    const { getFirestore, doc, setDoc, getDoc, onSnapshot } = await import("firebase/firestore");
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    fsDoc = doc; fsSetDoc = setDoc; fsGetDoc = getDoc; fsOnSnapshot = onSnapshot;
-    return true;
-  } catch { return false; }
-}
-
-async function saveToFirestore(colName, data) {
-  try {
-    if (!db) return;
-    await fsSetDoc(fsDoc(db, "pri_data", colName), { value: JSON.stringify(data) });
-  } catch {}
-}
-
-async function loadFromFirestore(colName, fallback) {
-  try {
-    if (!db) return fallback;
-    const snap = await fsGetDoc(fsDoc(db, "pri_data", colName));
-    if (snap.exists()) return JSON.parse(snap.data().value);
-  } catch {}
-  return fallback;
+// ─── localStorage helper ─────────────────────────────────────
+function useLocalStorage(key, init) {
+  const [value, setValue] = useState(() => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : init;
+    } catch { return init; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  }, [key, value]);
+  return [value, setValue];
 }
 
 // ─── APP ─────────────────────────────────────────────────────
 export default function App() {
   const [page, setPage] = useState("home");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  // Data state
-  const [users, setUsersState] = useState(INIT_USERS);
-  const [announcements, setAnnouncementsState] = useState(INIT_ANNOUNCEMENTS);
-  const [schedules, setSchedulesState] = useState(INIT_SCHEDULES);
-  const [infoList, setInfoListState] = useState(INIT_INFO);
-  const [ads, setAdsState] = useState(INIT_ADS);
-  const [groups, setGroupsState] = useState(INIT_GROUPS);
-  const [likes, setLikesState] = useState({});
-  const [comments, setCommentsState] = useState({});
-  const [events, setEventsState] = useState(INIT_EVENTS);
-  const [playlist, setPlaylistState] = useState(INIT_PLAYLIST);
-  const [currentUser, setCurrentUserState] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("pri_session")) || null; } catch { return null; }
-  });
+  // Data state — semua tersimpan dalam localStorage
+  const [users, setUsers] = useLocalStorage("pri_users", INIT_USERS);
+  const [announcements, setAnnouncements] = useLocalStorage("pri_announcements", INIT_ANNOUNCEMENTS);
+  const [schedules, setSchedules] = useLocalStorage("pri_schedules", INIT_SCHEDULES);
+  const [infoList, setInfoList] = useLocalStorage("pri_info", INIT_INFO);
+  const [ads, setAds] = useLocalStorage("pri_ads", INIT_ADS);
+  const [groups, setGroups] = useLocalStorage("pri_groups", INIT_GROUPS);
+  const [likes, setLikes] = useLocalStorage("pri_likes", {});
+  const [comments, setComments] = useLocalStorage("pri_comments", {});
+  const [events, setEvents] = useLocalStorage("pri_events", INIT_EVENTS);
+  const [playlist, setPlaylist] = useLocalStorage("pri_playlist", INIT_PLAYLIST);
+
+  // Auth — simpan sesi login
+  const [currentUser, setCurrentUser] = useLocalStorage("pri_session", null);
   const [toast, setToast] = useState(null);
-
-  // Wrapper setters — save to Firestore on change
-  const setUsers = (v) => { const val = typeof v === "function" ? v(users) : v; setUsersState(val); saveToFirestore("users", val); };
-  const setAnnouncements = (v) => { const val = typeof v === "function" ? v(announcements) : v; setAnnouncementsState(val); saveToFirestore("announcements", val); };
-  const setSchedules = (v) => { const val = typeof v === "function" ? v(schedules) : v; setSchedulesState(val); saveToFirestore("schedules", val); };
-  const setInfoList = (v) => { const val = typeof v === "function" ? v(infoList) : v; setInfoListState(val); saveToFirestore("infoList", val); };
-  const setAds = (v) => { const val = typeof v === "function" ? v(ads) : v; setAdsState(val); saveToFirestore("ads", val); };
-  const setGroups = (v) => { const val = typeof v === "function" ? v(groups) : v; setGroupsState(val); saveToFirestore("groups", val); };
-  const setLikes = (v) => { const val = typeof v === "function" ? v(likes) : v; setLikesState(val); saveToFirestore("likes", val); };
-  const setComments = (v) => { const val = typeof v === "function" ? v(comments) : v; setCommentsState(val); saveToFirestore("comments", val); };
-  const setEvents = (v) => { const val = typeof v === "function" ? v(events) : v; setEventsState(val); saveToFirestore("events", val); };
-  const setPlaylist = (v) => { const val = typeof v === "function" ? v(playlist) : v; setPlaylistState(val); saveToFirestore("playlist", val); };
-  const setCurrentUser = (v) => {
-    setCurrentUserState(v);
-    try { localStorage.setItem("pri_session", JSON.stringify(v)); } catch {}
-  };
-
-  // Load all data from Firestore on mount + realtime listener
-  useEffect(() => {
-    const collections = ["users","announcements","schedules","infoList","ads","groups","likes","comments","events","playlist"];
-    const setters = { users: setUsersState, announcements: setAnnouncementsState, schedules: setSchedulesState, infoList: setInfoListState, ads: setAdsState, groups: setGroupsState, likes: setLikesState, comments: setCommentsState, events: setEventsState, playlist: setPlaylistState };
-    const defaults = { users: INIT_USERS, announcements: INIT_ANNOUNCEMENTS, schedules: INIT_SCHEDULES, infoList: INIT_INFO, ads: INIT_ADS, groups: INIT_GROUPS, likes: {}, comments: {}, events: INIT_EVENTS, playlist: INIT_PLAYLIST };
-
-    // Timeout — kalau 5 saat tak load, guna data default
-    const timeout = setTimeout(() => setLoading(false), 5000);
-
-    initFirebase().then(async (ok) => {
-      if (!ok) { clearTimeout(timeout); setLoading(false); return; }
-
-      // Load once
-      await Promise.all(collections.map(async col => {
-        const data = await loadFromFirestore(col, defaults[col]);
-        setters[col](data);
-      }));
-      clearTimeout(timeout);
-      setLoading(false);
-
-      // Realtime listeners
-      collections.forEach(col => {
-        try {
-          fsOnSnapshot(fsDoc(db, "pri_data", col), (snap) => {
-            if (snap.exists()) {
-              try { setters[col](JSON.parse(snap.data().value)); } catch {}
-            }
-          }, () => {});
-        } catch {}
-      });
-    });
-
-    return () => clearTimeout(timeout);
-  }, []);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -785,25 +703,11 @@ export default function App() {
 
   // Auto-delete jadual yang dah lepas tarikh
   useEffect(() => {
-    if (!loading) {
-      const today = new Date().toISOString().split("T")[0];
-      const filtered = schedules.filter(x => x.date >= today);
-      if (filtered.length !== schedules.length) setSchedules(filtered);
-    }
-  }, [loading]);
+    const today = new Date().toISOString().split("T")[0];
+    setSchedules((s) => s.filter((x) => x.date >= today));
+  }, []);
 
   const navigate = (p) => { setPage(p); setMobileOpen(false); window.scrollTo(0, 0); };
-
-  // Loading screen
-  if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#0a0e27", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      <img src={LOGO_URL} alt="PRI" style={{ width: 72, height: 72, borderRadius: 12, border: "2px solid #e8c848", padding: 6, background: "#0f1535" }} onError={e => e.target.style.display = "none"} />
-      <div style={{ fontFamily: "serif", fontSize: 22, fontWeight: 800, color: "#e8c848" }}>Persatuan Railfans Indonesia</div>
-      <div style={{ width: 36, height: 36, border: "3px solid #e8c84822", borderTop: "3px solid #e8c848", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      <div style={{ fontSize: 13, color: "#9aa0b8" }}>Memuatkan data...</div>
-    </div>
-  );
 
   const navItems = [
     { key: "home", label: "Beranda", icon: "home" },
@@ -1562,12 +1466,9 @@ function AdminPanel({ currentUser, isOwner, users, setUsers, announcements, setA
           </button>
         ))}
         {isOwner && (
-          <button className="admin-nav-item" style={{ marginTop: 12, color: "#f87171" }} onClick={async () => {
-            if (window.confirm("Reset semua data ke asal? Ini akan padam semua data!")) {
-              const cols = ["users","announcements","schedules","infoList","ads","groups","likes","comments","events","playlist"];
-              const defaults = { users: INIT_USERS, announcements: INIT_ANNOUNCEMENTS, schedules: INIT_SCHEDULES, infoList: INIT_INFO, ads: INIT_ADS, groups: INIT_GROUPS, likes: {}, comments: {}, events: INIT_EVENTS, playlist: INIT_PLAYLIST };
-              await Promise.all(cols.map(c => saveToFirestore(c, defaults[c])));
-              localStorage.removeItem("pri_session");
+          <button className="admin-nav-item" style={{ marginTop: 12, color: "#f87171" }} onClick={() => {
+            if (window.confirm("Reset semua data ke asal? Ini akan padam semua data yang disimpan!")) {
+              ["pri_users","pri_announcements","pri_schedules","pri_info","pri_ads","pri_groups","pri_events","pri_playlist","pri_session"].forEach(k => localStorage.removeItem(k));
               window.location.reload();
             }
           }}>
@@ -2408,45 +2309,26 @@ function AdminMusic({ playlist, setPlaylist, showToast }) {
     type: "direct",
   });
 
-  const handleFileUpload = async (e) => {
-  const file = e.target.files[0]
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  if (!file) return
+    alert(
+      "Untuk semua user dengar lagu sama, sila guna direct link atau letak lagu dalam public/music/"
+    );
 
-  try {
-    const body = new FormData()
+    const fileUrl = URL.createObjectURL(file);
 
-    body.append("music", file)
-
-    const res = await fetch(
-      "https://ofiicial-web-pri.onrender.com/upload-music",
-      {
-        method: "POST",
-        body,
-      }
-    )
-
-    const data = await res.json()
-
-    if (data.success) {
-      setForm((f) => ({
-        ...f,
-        url: `https://ofiicial-web-pri.onrender.com${data.url}`,
-        type: "upload",
-        title: f.title || file.name,
-      }))
-
-      alert("Upload berjaya!")
-      console.log(data.url)
-    }
-  } catch (err) {
-    console.error(err)
-    alert("Upload gagal")
-  }
-}
+    setForm((f) => ({
+      ...f,
+      url: fileUrl,
+      type: "upload",
+      title: f.title || file.name,
+    }));
+  };
 
   const handleSave = () => {
-    if (!form.title) {
+    if (!form.title || !form.url) {
       alert("Tajuk dan lagu wajib diisi.");
       return;
     }
