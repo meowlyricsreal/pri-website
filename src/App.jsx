@@ -784,8 +784,6 @@ export default function App() {
     </div>
   );
 
-  const navigate = (p) => { setPage(p); setMobileOpen(false); window.scrollTo(0, 0); };
-
   const navItems = [
     { key: "home", label: "Beranda", icon: "home" },
     { key: "announcements", label: "Pengumuman", icon: "bell" },
