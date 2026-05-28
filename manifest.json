@@ -1,0 +1,25 @@
+{
+  "name": "Persatuan Railfans Indonesia",
+  "short_name": "PRI",
+  "description": "Komunitas resmi para pecinta kereta api Indonesia",
+  "start_url": "/pri-website/",
+  "scope": "/pri-website/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e27",
+  "theme_color": "#e8c848",
+  "icons": [
+    {
+      "src": "/pri-website/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pri-website/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
